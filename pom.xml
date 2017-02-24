@@ -17,10 +17,10 @@
 		</license>
 	</licenses>
 	<properties>
-		<camel.version>2.17.0.redhat-630187</camel.version>
+		<camel.version>2.17.0.redhat-630224</camel.version>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<version.maven-bundle-plugin>2.3.7</version.maven-bundle-plugin>
-		<jboss.fuse.bom.version>6.3.0.redhat-187</jboss.fuse.bom.version>
+		<jboss.fuse.bom.version>6.3.0.redhat-224</jboss.fuse.bom.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 	<dependencyManagement>
@@ -67,6 +67,23 @@
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-jetty</artifactId>
 		</dependency>
+
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-stream</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-bindy</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-cxf</artifactId>
+			<scope>provided</scope>
+		</dependency>
+		
 	</dependencies>
 	<repositories>
 		<repository>

@@ -12,27 +12,91 @@
 <!-- Configures the Camel Context -->
 <beans xmlns="http://www.springframework.org/schema/beans"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
-	<camelContext xmlns="http://camel.apache.org/schema/spring">
-		
-		<route>
-			<from uri="file:input?include=.*ready&amp;move=done" />
-			<setHeader headerName="CamelHttpMethod">
+	xsi:schemaLocation="       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd         http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd       ">
+
+
+	<bean class="com.util.DiffCalc" id="diffCalcProcessor" />
+
+	<camelContext id="large-http-streams" xmlns="http://camel.apache.org/schema/spring">
+		<!-- These 2 first routes are examples on how to send large streams of 
+			data and how to received large streams of data -->
+		<route id="readFileAndPutOnHTTP">
+			<from id="readFileAndPutOnHTTPStarter" uri="file:input?include=.*ready&amp;move=done" />
+			<setHeader headerName="CamelHttpMethod" id="setCamelHttpMethod">
 				<constant>PUT</constant>
 			</setHeader>
-			<to uri="http4:localhost:8123"></to>
-			<log message="${body}"></log>
+			<to id="putStream" uri="http4:localhost:8123" />
+			<log id="logHttpResponse" message="${body}" />
+		</route>
+		<route id="readHttpStreamAndDumpToFile">
+			<from id="readHttpStreamAndDumpToFileStarter" uri="jetty:http://0.0.0.0:8123?disableStreamCache=true" />
+			<log id="logStreamClass" message="Handling a stream of class : ${body.class}" />
+			<log id="logHttpHeaders" message="${headers}" />
+			<to id="writeTodile" uri="file:out" />
+			<setBody id="setResponseBody">
+				<constant>DONE</constant>
+			</setBody>
+		</route>
+
+		<route id="csvStream">
+			<from id="csvStreamStarter" uri="jetty:http://0.0.0.0:8123/csv?disableStreamCache=true" />
+			<log id="logStreamClass2" message="Handling a stream of class : ${body.class}" />
+			<setHeader headerName="start">
+				<method beanType="java.lang.System" method="currentTimeMillis()" />
+			</setHeader>
+			<split streaming="true" shareUnitOfWork="true">
+				<tokenize token="\n"></tokenize>
+				<sample samplePeriod="1">
+					<unmarshal>
+						<bindy type="Csv" classType="com.redhat.pocs.model.WireTransfer" />
+					</unmarshal>
+					<log message="#########################################"></log>
+					<log message="SAMPLING DATA EVERY 1 SEC ..."></log>
+					<log message="Number of lines processed : ${property.CamelSplitIndex}"></log>
+					<log message="paymentDate : ${body.paymentDate}"></log>
+					<log message="sendersName : ${body.sendersName}"></log>
+				</sample>
+			</split>
+			<setHeader headerName="end">
+				<method beanType="java.lang.System" method="currentTimeMillis()" />
+			</setHeader>
+			<process ref="diffCalcProcessor" />
+			<log message="#########################################"></log>
+			<log message="FINISHED PROCESSING"></log>
+			<log message="Speed MB/s: ${headers.speed}"></log>
+			<log message="Total File Size Bytes: ${headers.Content-Length}"></log>
+			<log message="Speed total time: ${headers.time}"></log>
 		</route>
 
 
-		<route>
-			<from uri="jetty:http://0.0.0.0:8123?disableStreamCache=true"/>
-			<log message="Handling a stream of class : ${body.class}"></log>
-			<log message="${headers}"></log>
-			<to uri="file:out"></to>
-			<setBody>
-				<constant>DONE</constant>
-			</setBody>
+		<route id="xmlStream">
+			<from uri="jetty:http://0.0.0.0:8123/xml?disableStreamCache=true" />
+			<setHeader headerName="start">
+				<method beanType="java.lang.System" method="currentTimeMillis()" />
+			</setHeader>
+<!-- 			<setBody>
+				<method beanType="com.util.FileUtils" method="getFile()" />
+			</setBody> -->
+			<log message="Handling a stream of class : ${body.class}" />
+			<split streaming="true" shareUnitOfWork="true"
+				strategyMethodAllowNull="false">
+				<xtokenize>/root/WireTransferMT103</xtokenize>
+				<sample samplePeriod="1">
+					<log message="#########################################"></log>
+					<log message="SAMPLING DATA EVERY 1 SEC ..."></log>
+					<log message="Number of lines processed : ${property.CamelSplitIndex}"></log>
+					<log message="DATA : ${body}"></log>
+				</sample>
+			</split>
+			<setHeader headerName="end">
+				<method beanType="java.lang.System" method="currentTimeMillis()" />
+			</setHeader>
+			<process ref="diffCalcProcessor" />
+			<log message="#########################################"></log>
+			<log message="FINISHED PROCESSING"></log>
+			<log message="Speed MB/s: ${headers.speed}"></log>
+			<log message="Total File Size Bytes: ${headers.Content-Length}"></log>
+			<log message="Speed total time: ${headers.time}"></log>
 		</route>
 
 	</camelContext>
